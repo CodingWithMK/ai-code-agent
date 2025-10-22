@@ -15,3 +15,5 @@ wheels/
 .env.*
 !.env.example
 
+# Output
+/output
