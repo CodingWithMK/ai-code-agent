@@ -1,47 +1,137 @@
-from llama_index.llms.ollama import Ollama
-from llama_parse import LlamaParse
-from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, PromptTemplate
-from llama_index.core.embeddings import resolve_embed_model
-from llama_index.core.tools import QueryEngineTool, ToolMetadata
-from llama_index.core.agent import ReActAgent
-from prompts import context
-from code_reader import code_reader
-from dotenv import load_dotenv
+"""
+CLI runner for the modular AI Code Agent
 
-# Loading all required credentials from the existing ".env" file in the root directory
-load_dotenv()
+Uses:
+- src/agents/ai_code_agent.AICodeAgent
+- src/config for environment-driven settings
 
-# Defining the local LLM we will use to interact with
-llm = Ollama(model="mistral", request_timeout=30.0)
+Run:
+    uv run python main.py
+"""
 
-# Data parser tool for grabbing information out of our data for our agent
-parser = LlamaParse(result_type="markdown")
+import os
+import sys
+import argparse
 
-# Explaning the parser where to find and extract the data needed.
-file_extractor = {".pdf": parser}
-documents = SimpleDirectoryReader("./data", file_extractor=file_extractor).load_data()
+# Ensure project root is on sys.path (so `src.*` imports work when run from root)
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
-# Defining the embedded model for the vector index calculations and vector index operations
-embed_model = resolve_embed_model("local:BAAI/bge-m3")
-vector_index = VectorStoreIndex.from_documents(documents, embed_model=embed_model)
-query_engine = vector_index.as_query_engine(llm=llm)
+from src.config import (
+    OLLAMA_BASE_URL, OLLAMA_TIMEOUT, OLLAMA_KEEP_ALIVE,
+    OLLAMA_CHAT_MODEL, OLLAMA_CODE_MODEL, DATA_DIR, LLAMA_CLOUD_API_KEY
+)
+from src.agents.ai_code_agent import AICodeAgent
 
-# Tools for our code agent
-tools = [
-    QueryEngineTool(
-        query_engine=query_engine,
-        metadata=ToolMetadata(
-            name="api_documentation",
-            description="This gives docomentation about code for an API. Use this for reading docs for the API."
-        ),
-    ),
-    code_reader,
-]
 
-# The local code LLM for code create when needed. 
-code_llm = Ollama(model="codellama")
-agent = ReActAgent.from_tools(tools, llm=code_llm, verbose=False, context=context)
+def ensure_dirs() -> None:
+    """Create required local folders if not present."""
+    os.makedirs("data", exist_ok=True)
+    os.makedirs("output", exist_ok=True)
 
-while (prompt := input("Enter a prompt (Press q to quit): ")) != "q":
-    result = agent.query(prompt)
-    print(result)
+
+def build_agent() -> AICodeAgent:
+    """Construct and return the AICodeAgent with current env/config."""
+    return AICodeAgent(
+        base_url=OLLAMA_BASE_URL,
+        timeout=OLLAMA_TIMEOUT,
+        keep_alive=OLLAMA_KEEP_ALIVE,
+        chat_model=OLLAMA_CHAT_MODEL,
+        code_model=OLLAMA_CODE_MODEL,
+        data_dir=DATA_DIR,
+        llama_cloud_api_key=LLAMA_CLOUD_API_KEY,
+    )
+
+
+def run_interactive(agent: AICodeAgent) -> None:
+    """Interactive REPL loop. Choose Plain (text) or Structured (code file) mode per prompt."""
+    print("\n🧠 AI Code Agent — CLI")
+    print("Type 'q' to quit.\n")
+
+    while True:
+        prompt = input("Enter a prompt (Press q to quit): ").strip()
+        if prompt.lower() == "q":
+            print("Bye!")
+            break
+        if not prompt:
+            continue
+
+        mode = input("Mode: [p]lain text / [s]tructured file output ? [p/s]: ").strip().lower() or "p"
+
+        try:
+            if mode == "s":
+                result = agent.generate_structured(prompt)
+                print("\n✅ Code generated")
+                print("\nDescription:\n", result.description)
+                print("\nCode:\n")
+                print(result.code)
+
+                # Save file
+                out_path = os.path.join("output", result.filename)
+                with open(out_path, "w", encoding="utf-8") as f:
+                    f.write(result.code)
+                print(f"\n💾 Saved file: output/{result.filename}\n")
+
+            else:
+                text = agent.query_text(prompt)
+                print("\n--- Agent Response (raw text) ---\n")
+                print(text, "\n")
+
+        except Exception as e:
+            print(f"\n❌ Error: {e}\n")
+
+
+def main() -> None:
+    """Parse arguments and run in chosen mode."""
+    parser = argparse.ArgumentParser(description="AI Code Agent (modular) — CLI runner")
+    parser.add_argument(
+        "--mode",
+        choices=["plain", "structured", "repl"],
+        default="repl",
+        help="plain: single-shot text; structured: single-shot code file; repl: interactive loop",
+    )
+    parser.add_argument(
+        "--prompt",
+        type=str,
+        default="",
+        help="Prompt to run in single-shot modes (plain/structured). Ignored in repl mode.",
+    )
+    args = parser.parse_args()
+
+    ensure_dirs()
+    agent = build_agent()
+
+    # Single-shot modes
+    if args.mode in {"plain", "structured"}:
+        if not args.prompt:
+            print("Please provide --prompt for single-shot mode.")
+            sys.exit(2)
+
+        try:
+            if args.mode == "plain":
+                text = agent.query_text(args.prompt)
+                print("\n--- Agent Response (raw text) ---\n")
+                print(text)
+
+            else:
+                result = agent.generate_structured(args.prompt)
+                print("\n✅ Code generated")
+                print("\nDescription:\n", result.description)
+                print("\nCode:\n")
+                print(result.code)
+
+                out_path = os.path.join("output", result.filename)
+                with open(out_path, "w", encoding="utf-8") as f:
+                    f.write(result.code)
+                print(f"\n💾 Saved file: output/{result.filename}")
+        except Exception as e:
+            print(f"\n❌ Error: {e}\n")
+        return
+
+    # Default: interactive REPL
+    run_interactive(agent)
+
+
+if __name__ == "__main__":
+    main()
