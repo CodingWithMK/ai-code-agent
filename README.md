@@ -1,70 +1,86 @@
-# 🧠 AI Code Agent
+# 🧠 AI Code Agent — Local Dev Assistant
 
-### A Local, Generative AI (RAG) Code Agent
-
-> An intelligent **code-reading and reasoning agent** built with **LlamaIndex**, **Ollama**, and **LlamaParse**.
-> The agent runs **entirely offline**, analyzes local files, retrieves documentation, and generates new code — all without sending data to external APIs.
+> A modular,  Generative AI code agent that reads, understands, and generates code using **Ollama**, **LlamaIndex**, and **LlamaParse** — all running locally.
 
 ---
 
-## 🚀 Overview
+## 📸 Project Overview
 
-**AI Code Agent** is a local RAG-based (Retrieval-Augmented Generation) system that combines:
+### Streamlit Web App
 
-* **Ollama LLMs** (`mistral`, `codellama`, etc.) for reasoning and generation
-* **LlamaIndex** for document parsing, embeddings, and tool orchestration
-* **LlamaParse** for extracting structured text from PDF documentation
-* **Custom tools** such as `code_reader` to inspect local files
+![AI Code Agent UI](assets/web-app-agent.png)
 
-It was built as part of the **Global AI Hub Generative AI Bootcamp** project, focusing on modular agent design and privacy-centric LLM workflows.
+### Generated Output Example
 
----
-
-## 🧩 Core Features
-
-| Feature                       | Description                                                                                               |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------- |
-| 💬 **ReAct Agent**            | A reasoning-and-action architecture that dynamically decides when to read, think, or code.                |
-| 🧠 **Local Ollama Models**    | Uses local LLMs (e.g., `mistral:7b-instruct`, `codellama:7b-instruct`) with no external API calls.        |
-| 🧾 **PDF Knowledge Parsing**  | Automatically parses API documentation PDFs using **LlamaParse** and indexes them via **LlamaIndex**.     |
-| 🗂️ **Vector Search (RAG)**   | Converts parsed text into vector embeddings (`BAAI/bge-m3`) for fast contextual retrieval.                |
-| 🧰 **Code Reader Tool**       | Reads any file inside the `/data` folder and returns its exact content for code understanding or editing. |
-| ⚙️ **Flexible Configuration** | Environment variables control all models and services via `.env` / `.env.example`.                        |
-| 🔐 **Local & Private**        | Entirely offline — no data leaves your machine.                                                           |
-| 🧩 **Extendable**             | Easily add new tools (e.g., code writer, file saver, web fetcher).                                        |
+![Generated Code](assets/code-output.png)
 
 ---
 
-## 🏗️ Tech Stack
+## 🚀 About the Project
 
-* **Language:** Python 3.10+
-* **LLM Runtime:** [Ollama](https://ollama.ai)
-* **Framework:** [LlamaIndex](https://docs.llamaindex.ai)
-* **Parser:** [LlamaParse](https://www.llamaindex.ai/llamaparse)
-* **Environment:** [uv package manager](https://docs.astral.sh/uv/)
-* **Embeddings:** `BAAI/bge-m3` (local Hugging Face model)
-* **Agent Architecture:** ReAct (Reason + Act loop)
+The **AI Code Agent** is a local Generative AI system capable of:
+
+* Reading and analyzing documentation or code files
+* Using tools (`code_reader`, `api_documentation`) to extract context
+* Generating and structuring new code
+* Operating **entirely offline** through local Ollama LLMs
+
+It was developed for the **Global AI Hub – Generative AI Bootcamp 2025**, combining both **RAG (Retrieval-Augmented Generation)** and **Agentic reasoning**.
 
 ---
 
-## 📂 Project Structure
+## 🧩 Modular Architecture
+
+The project is now fully modular and organized as follows:
 
 ```
 ai-code-agent/
-│
-├── _main.py              # Main entrypoint (agent orchestration)
-├── code_reader.py        # Custom FunctionTool for reading local code files
-├── prompts.py            # Agent purpose and behavior context
-├── config.py             # Centralized environment configuration
-├── requirements.txt      # Dependency list
-├── .env.example          # Safe environment template
-├── .gitignore            # Protects secrets (.env, cache, etc.)
-└── /data/                # Local PDFs, source files, and docs to analyze
+├── app/
+│   └── streamlit_app.py         # Streamlit-based web UI
+├── src/
+│   ├── agents/
+│   │   └── ai_code_agent.py     # Core agent class (LLMs, tools, RAG)
+│   ├── services/
+│   │   ├── ollama_utils.py      # Health check & warm-up
+│   │   ├── rag.py               # Document parsing and vector indexing
+│   │   └── structuring.py       # Pydantic schema + JSON pipeline
+│   ├── tools/
+│   │   └── code_reader.py       # FunctionTool for reading local code files
+│   ├── config.py                # Centralized environment configuration
+│   └── prompts.py               # Agent context and JSON schema templates
+├── data/                        # Input documents or code
+├── output/                      # Generated scripts
+├── main.py                      # CLI runner (new modular version)
+├── requirements.txt
+├── .env.example
+└── README.md
 ```
 
 ---
 
-## ⚙️ Setup & Installation
+## 🔐 Environment Configuration
+
+1. Copy the example environment file and edit it:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Obtain a **LlamaCloud API key** by creating an account at
+   [https://cloud.llamaindex.ai](https://cloud.llamaindex.ai)
+
+3. Paste your key into `.env`:
+
+   ```env
+   LLAMA_CLOUD_API_KEY=your_llamacloud_api_key_here
+   ```
+
+> This key allows **LlamaParse** to process PDFs and extract structured text.
+> Without it, the agent falls back to a default document reader.
+
+---
+
+## ⚙️ Installation & Setup
 
 ### 1️⃣ Clone the repository
 
@@ -81,185 +97,158 @@ Using **uv** (recommended):
 uv sync
 ```
 
-or traditional pip:
+or classic `venv`:
 
 ```bash
 python -m venv venv
-source venv/bin/activate     # (Windows: venv\Scripts\activate)
+source venv/bin/activate     # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 3️⃣ Configure environment variables
+### 3️⃣ Configure environment
 
-Create your local `.env` from the template:
-
-```bash
-cp .env.example .env
-```
-
-Then open `.env` and fill in your local or secret keys:
-
-```env
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_TIMEOUT=360
-OLLAMA_KEEP_ALIVE=-1
-OLLAMA_CHAT_MODEL=mistral:7b-instruct
-OLLAMA_CODE_MODEL=codellama:7b-instruct
-DATA_DIR=./data
-LLAMA_CLOUD_API_KEY=your_llamaparse_api_key_here
-```
+Follow the previous step to fill `.env` with your Ollama models and (optional) LlamaCloud key.
 
 ### 4️⃣ Pull Ollama models
 
 ```bash
-ollama pull mistral:7b-instruct
-ollama pull codellama:7b-instruct
+ollama pull mistral:latest
+ollama pull codellama:latest
 ```
 
-### 5️⃣ Run the Ollama service
+### 5️⃣ Start Ollama
 
 ```bash
 ollama serve
 ```
 
-### 6️⃣ Launch the agent
+---
+
+## 🖥️ Running the Agent
+
+### 🧠 **Option 1: Streamlit Web App**
+
+Launch the interactive dashboard:
 
 ```bash
-uv run python _main.py
+uv run streamlit run app/streamlit_app.py
 ```
+
+Then open [http://localhost:8501](http://localhost:8501) in your browser.
+
+From the UI, you can:
+
+* Upload files to `/data`
+* Query the agent
+* Generate structured Python files
+* Download code outputs directly from `/output`
 
 ---
 
-## 🧪 Example Interaction
+### 💻 **Option 2: CLI Mode**
+
+Run directly in the terminal (no Streamlit needed):
+
+```bash
+uv run python main.py
+```
+
+Choose between:
+
+* **Plain text mode** → short, descriptive answers
+* **Structured mode** → generates and saves code files
+
+---
+
+## 📟 Example CLI Session
+
+Below is a real interaction captured during testing.
+It demonstrates the agent reading `test.py` and generating a new Python script that calls the POST endpoint:
 
 ```
-Enter a prompt (Press q to quit):
-> Read the content of test.py and give me the exact same code back.
-```
-
-Agent internally:
-
-1. Detects intent → uses the **code_reader** tool.
-2. Reads `/data/test.py`.
-3. Returns the exact code inside a Python code block.
-
-Output:
-
-```python
-from flask import Flask, jsonify, request
-
-app = Flask(__name__)
-# ...
+Enter a prompt (Press q to quit): Read the contents of test.py and write a python script that calls the post endpoint to make a new item.
+Mode: [p]lain text / [s]tructured file output ? [p/s]: s
+Thought: The current language of the user is: English. I need to use a tool to help me answer the question.
+Action: code_reader
+Action Input: {'file_name': 'test.py'}
+Observation: {'file_content': 'from flask import Flask, request, jsonify
+...
 if __name__ == "__main__":
     app.run(debug=True)
+'}
+Thought: I can answer without using any more tools. I'll use the user's language to answer.
+Answer: To write a Python script that calls the POST endpoint to make a new item, you can follow these steps:
+
+1. Import the necessary libraries ...
+2. ...
+10. Run the Flask app using the debug mode for simplicity.
+
+Here's an example of what your script could look like:
+```
+
+from flask import Flask, request, jsonify
+...
+if **name** == "**main**":
+app.run(debug=True)
+
+```
+
+✅ Code generated  
+Description: Recovered from fenced code block (fallback).
+
+💾 Saved file: output/generated_code.py
 ```
 
 ---
 
-## 🧰 Custom Tools
+## 🧱 Features
 
-### 🧩 `code_reader.py`
-
-```python
-from llama_index.core.tools import FunctionTool
-import os
-
-def code_reader_func(file_name):
-    path = os.path.join("data", file_name)
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            content = f.read()
-            return {"code": content}
-    except Exception as e:
-        return {"error": str(e)}
-
-code_reader = FunctionTool.from_defaults(
-    fn=code_reader_func,
-    name="code_reader",
-    description="Reads and returns the exact content of a code file from the data directory."
-)
-```
-
-> This tool allows the agent to “open” and analyze local code files dynamically.
+| Feature                   | Description                                                      |
+| ------------------------- | ---------------------------------------------------------------- |
+| 💬 ReAct Agent            | Step-by-step reasoning (Thought → Action → Observation → Answer) |
+| 🧠 RAG with LlamaIndex    | Reads and indexes local API docs or code                         |
+| 🧩 Modular Tools          | `code_reader`, `api_documentation`                               |
+| 🖥️ Streamlit UI          | Upload, query, and download code visually                        |
+| ⚙️ CLI Mode               | Lightweight text or structured file output                       |
+| 🔐 Privacy                | 100% local execution with Ollama                                 |
+| 🧰 LlamaParse Integration | Structured PDF parsing with LlamaCloud API key                   |
 
 ---
 
-## 🧠 Agent Architecture
+## 🧰 Example Usage Summary
 
-The agent uses **LlamaIndex’s ReActAgent**, which follows a loop:
-
-```
-Thought → Action (tool) → Observation → Reasoning → Final Answer
-```
-
-* When a user asks about documentation → uses `api_documentation` (RAG engine).
-* When a user asks to “read code” → invokes `code_reader`.
-* When a user asks to “generate code” → directly uses the LLM (`codellama`).
-
-Its reasoning steps are limited (`max_iterations=5`) to prevent “overthinking” and ensure fast responses.
+| Mode                | Command                                                                       | Output                            |
+| ------------------- | ----------------------------------------------------------------------------- | --------------------------------- |
+| Streamlit UI        | `uv run streamlit run app/streamlit_app.py`                                   | Interactive web dashboard         |
+| CLI Text Mode       | `uv run python main.py --mode plain --prompt "Explain test.py"`               | Raw reasoning text                |
+| CLI Structured Mode | `uv run python main.py --mode structured --prompt "Generate client for POST"` | Saves Python file under `/output` |
 
 ---
 
-## 🔒 Security & Privacy
+## 🧠 Developer Notes
 
-* No external API calls from the LLM (Ollama runs locally).
-* `.env` file is excluded from version control via `.gitignore`.
-* `.env.example` serves as a public, non-secret template.
-* You can safely share this repo without exposing API keys.
+* The agent’s reasoning, tool calls, and outputs are logged transparently.
+* LlamaIndex orchestrates the flow; Ollama handles model inference.
+* The modular `src/` layout supports easy extension — add new tools under `src/tools/`.
 
----
+Future enhancements might include:
 
-## 🧭 Environment Config Management
-
-* All environment variables are loaded via `config.py`.
-* Secure defaults ensure the app runs even without `.env`.
-* Secrets such as `LLAMA_CLOUD_API_KEY` are never hardcoded.
-* In CI/CD (e.g., GitHub Actions), store secrets under
-  **Settings → Secrets → Actions**.
+* 🧩 **Code Writer Tool** (automatic saving & diffing)
+* 🌐 **Web Fetch Tool** (for online doc retrieval)
+* 🪶 **Memory Module** (persistent multi-turn reasoning)
 
 ---
 
-## 🧠 Future Enhancements
+## 🧩 Credits
 
-| Planned Feature                        | Description                                       |
-| -------------------------------------- | ------------------------------------------------- |
-| ✍️ **Code Writer Tool**                | Generate and save new Python files from prompts.  |
-| 🧩 **File Saver / Editor**             | Automatically apply LLM-suggested modifications.  |
-| 🔎 **Web Fetcher Tool**                | Retrieve and summarize online documentation.      |
-| 🧱 **Memory Module**                   | Persistent long-term memory for multi-turn tasks. |
-| 🪶 **Async Warm-Up with Progress Bar** | Show model-loading progress during startup.       |
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome!
-Please open a pull request or issue if you:
-
-* Found a bug 🐞
-* Have an idea for a new tool ⚒️
-* Want to add support for another Ollama model 💡
-
-Steps:
-
-```bash
-git checkout -b feature/my-new-tool
-git commit -m "Add new feature"
-git push origin feature/my-new-tool
-```
+Developed by **Muhammed Musab Kaya**
+as part of the **Global AI Hub – Generative AI Bootcamp 2025**
 
 ---
 
 ## 📜 License
 
 This project is released under the **MIT License**.
-Feel free to modify, extend, and use it for your personal or educational projects.
-
----
-
-## 🧩 Credits
-
-Developed by **Musab Kaya** as part of the
-**Global AI Hub – Generative AI Bootcamp 2025**.
+Feel free to use, modify, and improve it — contributions are welcome!
 
 ---
